@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
+import SiteShell from "@/components/layout/SiteShell";
 import "./globals.css";
 
 const display = Cormorant_Garamond({
@@ -15,7 +16,10 @@ const sans = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "C|E Clothier — Bespoke Tailoring, Toronto",
+  title: {
+    default: "C|E Clothier — Bespoke Tailoring, Toronto",
+    template: "%s · C|E Clothier",
+  },
   description:
     "Driven by passion, delivered with style. Private bespoke tailoring by C|E Clothier in Toronto.",
 };
@@ -27,7 +31,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${display.variable} ${sans.variable}`}>
-      <body>{children}</body>
+      <body>
+        <SiteShell>{children}</SiteShell>
+      </body>
     </html>
   );
 }
