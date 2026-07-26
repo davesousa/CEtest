@@ -33,6 +33,131 @@ const services = [
   },
 ];
 
+const HERO_SCROLL_SCRIPT = String.raw`
+(() => {
+  if (window.__ceHeroScrollBound) return;
+  window.__ceHeroScrollBound = true;
+
+  const init = () => {
+    const sequence = document.querySelector("[data-hero-sequence]");
+    const video = document.getElementById("ce-hero-video");
+    if (!sequence || !video) {
+      window.setTimeout(init, 50);
+      return;
+    }
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      video.pause();
+      return;
+    }
+
+    let target = 0;
+    let current = 0;
+    let frame = 0;
+    let lastTime = performance.now();
+    let ready = false;
+    let priming = false;
+    let handoffTimer = 0;
+
+    const smootherStep = (value) =>
+      value * value * value * (value * (value * 6 - 15) + 10);
+
+    const setVisuals = (progress) => {
+      const copyExit = Math.min(1, Math.max(0, (progress - 0.42) / 0.32));
+      const copyEase = 1 - Math.pow(1 - copyExit, 3);
+      const focalPoint = 59 - Math.sin(progress * Math.PI) * 17;
+      sequence.style.setProperty("--hero-progress", progress.toFixed(4));
+      sequence.style.setProperty("--hero-copy-opacity", (1 - copyEase).toFixed(4));
+      sequence.style.setProperty("--hero-copy-shift", (-copyEase * 3).toFixed(3) + "rem");
+      sequence.style.setProperty("--hero-focal-x", focalPoint.toFixed(2) + "%");
+    };
+
+    const render = (time) => {
+      const delta = Math.min(64, time - lastTime);
+      lastTime = time;
+      current += (target - current) * (1 - Math.exp(-delta * 0.012));
+
+      if (Math.abs(target - current) < 0.0001) current = target;
+      setVisuals(current);
+
+      if (ready && Number.isFinite(video.duration)) {
+        const finalFrame = Math.max(0, video.duration - 1 / 24);
+        const desiredTime = smootherStep(current) * finalFrame;
+        if (Math.abs(video.currentTime - desiredTime) > 1 / 60) {
+          video.currentTime = desiredTime;
+        }
+      }
+
+      if (Math.abs(target - current) > 0.0001) {
+        frame = requestAnimationFrame(render);
+      } else {
+        frame = 0;
+      }
+    };
+
+    const update = () => {
+      const bounds = sequence.getBoundingClientRect();
+      const distance = Math.max(1, bounds.height - window.innerHeight);
+      target = Math.min(1, Math.max(0, -bounds.top / distance));
+      if (!frame) {
+        lastTime = performance.now();
+        frame = requestAnimationFrame(render);
+      }
+    };
+
+    const handoffToScroll = () => {
+      if (ready) return;
+      window.clearTimeout(handoffTimer);
+      video.pause();
+      ready = true;
+      priming = false;
+      sequence.dataset.videoReady = "true";
+      update();
+    };
+
+    const prime = () => {
+      if (ready || priming) return;
+      priming = true;
+      video.muted = true;
+      video.playsInline = true;
+
+      const playback = video.play();
+      handoffTimer = window.setTimeout(handoffToScroll, 160);
+      if (playback) {
+        playback.catch(() => {
+          sequence.dataset.videoReady = "pending";
+        });
+      }
+    };
+
+    const unlockOnTouch = () => {
+      if (!ready) {
+        prime();
+        return;
+      }
+      const playback = video.play();
+      window.setTimeout(() => {
+        video.pause();
+        update();
+      }, 80);
+      if (playback) playback.catch(() => {});
+    };
+
+    video.pause();
+    video.addEventListener("loadedmetadata", prime, { once: true });
+    window.addEventListener("pointerdown", unlockOnTouch, { passive: true, once: true });
+    window.addEventListener("touchstart", unlockOnTouch, { passive: true, once: true });
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+
+    if (video.readyState >= 1) prime();
+    update();
+  };
+
+  requestAnimationFrame(init);
+})();
+`;
+
 function Arrow({ diagonal = false }: { diagonal?: boolean }) {
   return (
     <svg
@@ -60,8 +185,6 @@ export default function HomePage() {
   const [newsletterSent, setNewsletterSent] = useState(false);
   const [cursorVisible, setCursorVisible] = useState(false);
   const cursorRef = useRef<HTMLDivElement>(null);
-  const heroSequenceRef = useRef<HTMLDivElement>(null);
-  const heroVideoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     const revealItems = document.querySelectorAll<HTMLElement>("[data-reveal]");
@@ -111,141 +234,6 @@ export default function HomePage() {
     document.body.classList.toggle("locked", menuOpen || bookingOpen);
     return () => document.body.classList.remove("locked");
   }, [menuOpen, bookingOpen]);
-
-  useEffect(() => {
-    const sequence = heroSequenceRef.current;
-    const video = heroVideoRef.current;
-    if (!sequence || !video) return;
-
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduceMotion) {
-      video.removeAttribute("autoplay");
-      video.pause();
-      return;
-    }
-
-    let targetProgress = 0;
-    let currentProgress = 0;
-    let animationFrame = 0;
-    let lastFrame = performance.now();
-    let metadataReady = false;
-    let videoPrimed = false;
-    let primePromise: Promise<void> | null = null;
-    let primeTimer = 0;
-
-    const smootherStep = (value: number) =>
-      value * value * value * (value * (value * 6 - 15) + 10);
-
-    const setVisualProgress = (progress: number) => {
-      const copyExit = Math.min(1, Math.max(0, (progress - 0.42) / 0.32));
-      const copyEase = 1 - Math.pow(1 - copyExit, 3);
-      const focalPoint = 59 - Math.sin(progress * Math.PI) * 17;
-      sequence.style.setProperty("--hero-progress", progress.toFixed(4));
-      sequence.style.setProperty("--hero-copy-opacity", (1 - copyEase).toFixed(4));
-      sequence.style.setProperty("--hero-copy-shift", `${(-copyEase * 3).toFixed(3)}rem`);
-      sequence.style.setProperty("--hero-focal-x", `${focalPoint.toFixed(2)}%`);
-    };
-
-    const finishPriming = () => {
-      if (videoPrimed) return;
-      if (primeTimer) window.clearTimeout(primeTimer);
-      video.pause();
-      videoPrimed = true;
-      metadataReady = true;
-      sequence.dataset.videoReady = "true";
-      updateTarget();
-    };
-
-    const schedulePrimingHandoff = () => {
-      if (videoPrimed) return;
-      if (primeTimer) window.clearTimeout(primeTimer);
-      primeTimer = window.setTimeout(finishPriming, 120);
-    };
-
-    const primeVideo = () => {
-      if (videoPrimed || primePromise) return;
-
-      primePromise = video
-        .play()
-        .then(() => {
-          schedulePrimingHandoff();
-          if ("requestVideoFrameCallback" in video) {
-            video.requestVideoFrameCallback(() => finishPriming());
-          }
-        })
-        .catch(() => {
-          primePromise = null;
-          sequence.dataset.videoReady = "false";
-        });
-    };
-
-    const renderFrame = (time: number) => {
-      const delta = Math.min(64, time - lastFrame);
-      lastFrame = time;
-      const damping = 1 - Math.exp(-delta * 0.012);
-      currentProgress += (targetProgress - currentProgress) * damping;
-
-      if (Math.abs(targetProgress - currentProgress) < 0.0001) {
-        currentProgress = targetProgress;
-      }
-
-      setVisualProgress(currentProgress);
-
-      if (metadataReady && Number.isFinite(video.duration)) {
-        const easedProgress = smootherStep(currentProgress);
-        const finalFrame = Math.max(0, video.duration - 1 / 24);
-        const targetTime = easedProgress * finalFrame;
-        if (Math.abs(video.currentTime - targetTime) > 1 / 60) {
-          video.currentTime = targetTime;
-        }
-      }
-
-      if (Math.abs(targetProgress - currentProgress) > 0.0001) {
-        animationFrame = requestAnimationFrame(renderFrame);
-      } else {
-        animationFrame = 0;
-      }
-    };
-
-    const updateTarget = () => {
-      const bounds = sequence.getBoundingClientRect();
-      const scrollDistance = Math.max(1, bounds.height - window.innerHeight);
-      targetProgress = Math.min(1, Math.max(0, -bounds.top / scrollDistance));
-      primeVideo();
-
-      if (!animationFrame) {
-        lastFrame = performance.now();
-        animationFrame = requestAnimationFrame(renderFrame);
-      }
-    };
-
-    const onMetadata = () => {
-      primeVideo();
-    };
-
-    video.addEventListener("loadedmetadata", onMetadata);
-    video.addEventListener("playing", schedulePrimingHandoff);
-    window.addEventListener("pointerdown", primeVideo, { passive: true });
-    window.addEventListener("touchstart", primeVideo, { passive: true });
-    window.addEventListener("scroll", updateTarget, { passive: true });
-    window.addEventListener("resize", updateTarget);
-
-    if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
-      primeVideo();
-    }
-    updateTarget();
-
-    return () => {
-      if (animationFrame) cancelAnimationFrame(animationFrame);
-      if (primeTimer) window.clearTimeout(primeTimer);
-      video.removeEventListener("loadedmetadata", onMetadata);
-      video.removeEventListener("playing", schedulePrimingHandoff);
-      window.removeEventListener("pointerdown", primeVideo);
-      window.removeEventListener("touchstart", primeVideo);
-      window.removeEventListener("scroll", updateTarget);
-      window.removeEventListener("resize", updateTarget);
-    };
-  }, []);
 
   const closeMenu = () => setMenuOpen(false);
   const openBooking = () => {
@@ -321,13 +309,11 @@ export default function HomePage() {
         </div>
       </div>
 
-      <div className="hero-sequence" id="top" ref={heroSequenceRef}>
+      <div className="hero-sequence" id="top" data-hero-sequence>
         <section className="hero">
           <video
-            ref={heroVideoRef}
+            id="ce-hero-video"
             className="hero__video"
-            autoPlay
-            loop
             muted
             playsInline
             preload="auto"
@@ -337,6 +323,10 @@ export default function HomePage() {
           >
             <source src="/ce-hero-scroll.mp4" type="video/mp4" />
           </video>
+          <script
+            suppressHydrationWarning
+            dangerouslySetInnerHTML={{ __html: HERO_SCROLL_SCRIPT }}
+          />
           <div className="hero__shade" />
           <div className="hero__rail">
             <p>Private tailoring</p>
