@@ -7,17 +7,22 @@ export const primaryNav = [
 ];
 
 export const mobileNav = [
+  { label: "Home", href: "/" },
   { label: "Our Story", href: "/about" },
   { label: "The Process", href: "/our-process" },
-  { label: "Custom Suits", href: "/custom-suits" },
-  { label: "Custom Shirts", href: "/custom-shirts" },
+  { label: "Collection", href: "/custom-suits" },
+  { label: "Contact", href: "/contact" },
+];
+
+export const mobileSecondaryNav = [
+  { label: "Suits", href: "/custom-suits" },
+  { label: "Shirts", href: "/custom-shirts" },
   { label: "Outerwear", href: "/custom-outerwear" },
   { label: "Weddings", href: "/weddings" },
-  { label: "Celebrities", href: "/celebrities" },
+  { label: "Clientèle", href: "/celebrities" },
   { label: "Media", href: "/media" },
   { label: "Gift Card", href: "/gift-card" },
   { label: "Community", href: "/community" },
-  { label: "Contact", href: "/contact" },
 ];
 
 export const footerNav = [

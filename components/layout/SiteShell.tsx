@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
 import { BookingProvider, useBooking } from "@/lib/booking-context";
-import { footerNav, mobileNav, primaryNav } from "@/lib/nav";
+import { footerNav, mobileNav, mobileSecondaryNav, primaryNav } from "@/lib/nav";
 import Arrow from "@/components/ui/Arrow";
 import BrandMark from "@/components/ui/BrandMark";
 
@@ -15,10 +15,24 @@ function SiteChrome({ children }: { children: ReactNode }) {
   const [newsletterSent, setNewsletterSent] = useState(false);
   const [cursorVisible, setCursorVisible] = useState(false);
   const cursorRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setMenuOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    closeButtonRef.current?.focus();
+
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [menuOpen]);
 
   useEffect(() => {
     const revealItems = document.querySelectorAll<HTMLElement>("[data-reveal]");
@@ -83,8 +97,12 @@ function SiteChrome({ children }: { children: ReactNode }) {
         aria-hidden="true"
       />
 
-      <header className={`site-header ${pathname === "/" ? "site-header--home" : "site-header--page"}`}>
-        <Link href="/" className="logo-link" aria-label="C E Clothier home">
+      <header
+        className={`site-header ${pathname === "/" ? "site-header--home" : "site-header--page"} ${
+          menuOpen ? "is-menu-open" : ""
+        }`}
+      >
+        <Link href="/" className="logo-link" aria-label="C E Clothier home" onClick={closeMenu}>
           <BrandMark />
           <span className="logo-type">
             C|E <small>Clothier</small>
@@ -112,6 +130,7 @@ function SiteChrome({ children }: { children: ReactNode }) {
           className="menu-toggle"
           aria-expanded={menuOpen}
           aria-controls="mobile-menu"
+          aria-label={menuOpen ? "Close menu" : "Open menu"}
           onClick={() => setMenuOpen((open) => !open)}
         >
           <span>{menuOpen ? "Close" : "Menu"}</span>
@@ -120,24 +139,98 @@ function SiteChrome({ children }: { children: ReactNode }) {
         </button>
       </header>
 
-      <div id="mobile-menu" className={`mobile-menu ${menuOpen ? "is-open" : ""}`}>
-        <div className="menu-grain" />
-        <nav aria-label="Mobile navigation">
-          {mobileNav.map((item, index) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              onClick={closeMenu}
-              style={{ "--index": index } as React.CSSProperties}
+      <div
+        id="mobile-menu"
+        className={`mobile-menu ${menuOpen ? "is-open" : ""}`}
+        aria-hidden={!menuOpen}
+      >
+        <div className="menu-grain" aria-hidden="true" />
+
+        <div className="mobile-menu__top">
+          <Link href="/" className="mobile-menu__brand" onClick={closeMenu} tabIndex={menuOpen ? 0 : -1}>
+            <BrandMark />
+            <span>
+              C|E Clothier
+              <small>Toronto</small>
+            </span>
+          </Link>
+          <button
+            ref={closeButtonRef}
+            className="mobile-menu__close"
+            onClick={closeMenu}
+            aria-label="Close menu"
+            tabIndex={menuOpen ? 0 : -1}
+          >
+            <i />
+          </button>
+        </div>
+
+        <div className="mobile-menu__body">
+          <nav className="mobile-menu__primary" aria-label="Mobile navigation">
+            {mobileNav.map((item, index) => (
+              <Link
+                key={item.label}
+                href={item.href}
+                onClick={closeMenu}
+                className={pathname === item.href ? "is-active" : undefined}
+                style={{ "--index": index } as React.CSSProperties}
+                tabIndex={menuOpen ? 0 : -1}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+
+          <div className="mobile-menu__secondary" style={{ "--index": mobileNav.length } as React.CSSProperties}>
+            {mobileSecondaryNav.map((item) => (
+              <Link
+                key={item.label}
+                href={item.href}
+                onClick={closeMenu}
+                className={pathname === item.href ? "is-active" : undefined}
+                tabIndex={menuOpen ? 0 : -1}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+
+          <div className="mobile-menu__contact" style={{ "--index": mobileNav.length + 1 } as React.CSSProperties}>
+            <p>
+              Toronto, Ontario
+              <br />
+              Private studio
+              <br />
+              By appointment
+            </p>
+            <a href="mailto:chinedu@ceclothier.com" tabIndex={menuOpen ? 0 : -1}>
+              Email us
+            </a>
+            <a href="tel:+14166137780" tabIndex={menuOpen ? 0 : -1}>
+              416.613.7780
+            </a>
+            <button type="button" onClick={handleOpenBooking} tabIndex={menuOpen ? 0 : -1}>
+              Book a private fitting
+            </button>
+          </div>
+        </div>
+
+        <div className="mobile-menu__footer" style={{ "--index": mobileNav.length + 2 } as React.CSSProperties}>
+          <div>
+            <p>Toronto studio</p>
+            <p>© {new Date().getFullYear()} C|E Clothier</p>
+          </div>
+          <div>
+            <p>Follow</p>
+            <a
+              href="https://www.instagram.com/ceclothier/"
+              target="_blank"
+              rel="noreferrer"
+              tabIndex={menuOpen ? 0 : -1}
             >
-              <span>{String(index + 1).padStart(2, "0")}</span>
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-        <div className="mobile-menu__footer">
-          <button onClick={handleOpenBooking}>Request a private fitting</button>
-          <p>Toronto, Canada · By appointment</p>
+              Instagram
+            </a>
+          </div>
         </div>
       </div>
 
