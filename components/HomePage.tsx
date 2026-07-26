@@ -59,13 +59,37 @@ const HERO_SCROLL_SCRIPT = String.raw`
     let priming = false;
     let handoffTimer = 0;
 
-    const smootherStep = (value) =>
-      value * value * value * (value * (value * 6 - 15) + 10);
+    const focalTrack = [
+      [0, 59],
+      [0.1, 55],
+      [0.2, 51],
+      [0.3, 47],
+      [0.4, 44],
+      [0.5, 42],
+      [0.6, 38],
+      [0.7, 31],
+      [0.8, 24],
+      [0.9, 20],
+      [1, 20],
+    ];
+
+    const trackedFocalPoint = (progress) => {
+      for (let index = 1; index < focalTrack.length; index += 1) {
+        const previous = focalTrack[index - 1];
+        const next = focalTrack[index];
+        if (progress <= next[0]) {
+          const localProgress = (progress - previous[0]) / (next[0] - previous[0]);
+          const easedProgress = localProgress * localProgress * (3 - 2 * localProgress);
+          return previous[1] + (next[1] - previous[1]) * easedProgress;
+        }
+      }
+      return focalTrack[focalTrack.length - 1][1];
+    };
 
     const setVisuals = (progress) => {
-      const copyExit = Math.min(1, Math.max(0, (progress - 0.42) / 0.32));
+      const copyExit = Math.min(1, Math.max(0, (progress - 0.32) / 0.26));
       const copyEase = 1 - Math.pow(1 - copyExit, 3);
-      const focalPoint = 59 - Math.sin(progress * Math.PI) * 17;
+      const focalPoint = trackedFocalPoint(progress);
       sequence.style.setProperty("--hero-progress", progress.toFixed(4));
       sequence.style.setProperty("--hero-copy-opacity", (1 - copyEase).toFixed(4));
       sequence.style.setProperty("--hero-copy-shift", (-copyEase * 3).toFixed(3) + "rem");
@@ -75,14 +99,14 @@ const HERO_SCROLL_SCRIPT = String.raw`
     const render = (time) => {
       const delta = Math.min(64, time - lastTime);
       lastTime = time;
-      current += (target - current) * (1 - Math.exp(-delta * 0.012));
+      current += (target - current) * (1 - Math.exp(-delta * 0.0095));
 
       if (Math.abs(target - current) < 0.0001) current = target;
       setVisuals(current);
 
       if (ready && Number.isFinite(video.duration)) {
         const finalFrame = Math.max(0, video.duration - 1 / 24);
-        const desiredTime = smootherStep(current) * finalFrame;
+        const desiredTime = current * finalFrame;
         if (Math.abs(video.currentTime - desiredTime) > 1 / 60) {
           video.currentTime = desiredTime;
         }

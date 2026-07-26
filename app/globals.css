@@ -309,7 +309,7 @@ a:hover .arrow--diagonal {
 
 .hero-sequence {
   position: relative;
-  height: 210svh;
+  height: 300svh;
   --hero-progress: 0;
   --hero-copy-opacity: 1;
   --hero-copy-shift: 0rem;
@@ -1426,7 +1426,7 @@ footer {
   }
 
   .hero-sequence {
-    height: 200svh;
+    height: 260svh;
   }
 
   .hero__video {
