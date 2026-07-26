@@ -81,14 +81,50 @@ const HERO_SCROLL_SCRIPT = String.raw`
       return focalTrack[focalTrack.length - 1][1];
     };
 
+    const rangeProgress = (progress, start, end) =>
+      Math.min(1, Math.max(0, (progress - start) / (end - start)));
+
+    const smoothProgress = (progress) => progress * progress * (3 - 2 * progress);
+
     const setVisuals = (progress) => {
-      const copyExit = Math.min(1, Math.max(0, (progress - 0.32) / 0.26));
-      const copyEase = 1 - Math.pow(1 - copyExit, 3);
+      const primaryExit = smoothProgress(rangeProgress(progress, 0.24, 0.43));
+      const secondaryLead = smoothProgress(rangeProgress(progress, 0.28, 0.43));
+      const secondaryFollow = smoothProgress(rangeProgress(progress, 0.34, 0.49));
+      const secondaryExit = smoothProgress(rangeProgress(progress, 0.92, 1));
+      const bottomExit = smoothProgress(rangeProgress(progress, 0.95, 1));
       const focalPoint = trackedFocalPoint(progress);
+
       sequence.style.setProperty("--hero-progress", progress.toFixed(4));
-      sequence.style.setProperty("--hero-copy-opacity", (1 - copyEase).toFixed(4));
-      sequence.style.setProperty("--hero-copy-shift", (-copyEase * 3).toFixed(3) + "rem");
       sequence.style.setProperty("--hero-focal-x", focalPoint.toFixed(2) + "%");
+      sequence.style.setProperty("--hero-primary-opacity", (1 - primaryExit).toFixed(4));
+      sequence.style.setProperty("--hero-primary-y", (-primaryExit * 2.5).toFixed(3) + "rem");
+      sequence.style.setProperty("--hero-primary-blur", (primaryExit * 8).toFixed(2) + "px");
+      sequence.style.setProperty(
+        "--hero-secondary-opacity",
+        (1 - secondaryExit).toFixed(4),
+      );
+      sequence.style.setProperty("--hero-secondary-blur", ((1 - secondaryLead) * 8 + secondaryExit * 4).toFixed(2) + "px");
+      sequence.style.setProperty(
+        "--hero-secondary-eyebrow-opacity",
+        (secondaryLead * (1 - secondaryExit)).toFixed(4),
+      );
+      sequence.style.setProperty(
+        "--hero-secondary-one-opacity",
+        (secondaryLead * (1 - secondaryExit)).toFixed(4),
+      );
+      sequence.style.setProperty(
+        "--hero-secondary-two-opacity",
+        (secondaryFollow * (1 - secondaryExit)).toFixed(4),
+      );
+      sequence.style.setProperty(
+        "--hero-secondary-one-y",
+        ((1 - secondaryLead) * 3 - secondaryExit * 1.5).toFixed(3) + "rem",
+      );
+      sequence.style.setProperty(
+        "--hero-secondary-two-y",
+        ((1 - secondaryFollow) * 3.75 - secondaryExit * 1.5).toFixed(3) + "rem",
+      );
+      sequence.style.setProperty("--hero-bottom-opacity", (1 - bottomExit).toFixed(4));
     };
 
     const render = (time) => {
@@ -353,17 +389,32 @@ export default function HomePage() {
             <p>Toronto · Est. 2014</p>
           </div>
           <div className="hero__content">
-            <p className="eyebrow hero__eyebrow">Driven by passion, delivered with style.</p>
-            <h1 aria-label="Made to be remembered">
-              <span className="hero-line">
-                <i>Made</i>
-                <i>to</i>
-                <i>be</i>
-              </span>
-              <span className="hero-line hero-line--indent">
-                <i>remembered.</i>
-              </span>
-            </h1>
+            <div className="hero__stages">
+              <div className="hero-stage hero-stage--primary">
+                <p className="eyebrow hero__eyebrow">C|E Clothier · Toronto</p>
+                <h1 className="hero-tagline">
+                  <span className="hero-tagline__line">
+                    Driven by <em>passion,</em>
+                  </span>
+                  <span className="hero-tagline__line">
+                    delivered with <em>style.</em>
+                  </span>
+                </h1>
+              </div>
+              <div className="hero-stage hero-stage--secondary">
+                <p className="eyebrow hero__eyebrow">The C|E standard</p>
+                <h2 aria-label="Made to be remembered">
+                  <span className="hero-line">
+                    <i>Made</i>
+                    <i>to</i>
+                    <i>be</i>
+                  </span>
+                  <span className="hero-line hero-line--indent">
+                    <i>remembered.</i>
+                  </span>
+                </h2>
+              </div>
+            </div>
             <div className="hero__bottom">
               <p>
                 Bespoke garments for men who understand that style is more than what you wear.
