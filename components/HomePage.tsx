@@ -60,17 +60,12 @@ const HERO_SCROLL_SCRIPT = String.raw`
     let handoffTimer = 0;
 
     const focalTrack = [
-      [0, 59],
-      [0.1, 55],
-      [0.2, 51],
-      [0.3, 47],
-      [0.4, 44],
-      [0.5, 42],
-      [0.6, 38],
-      [0.7, 31],
-      [0.8, 24],
-      [0.9, 20],
-      [1, 20],
+      [0, 53],
+      [0.2, 52],
+      [0.4, 51],
+      [0.6, 50],
+      [0.8, 49],
+      [1, 48],
     ];
 
     const trackedFocalPoint = (progress) => {
@@ -342,10 +337,10 @@ export default function HomePage() {
             playsInline
             preload="auto"
             disablePictureInPicture
-            poster="/ce-hero-poster.webp"
+            poster="/ce-hero-poster-v2.webp"
             aria-label="C E Clothier model moving in a bespoke pinstripe suit"
           >
-            <source src="/ce-hero-scroll.mp4" type="video/mp4" />
+            <source src="/ce-hero-scroll-v2.mp4" type="video/mp4" />
           </video>
           <script
             suppressHydrationWarning
