@@ -384,6 +384,8 @@ a:hover .arrow--diagonal {
 .hero-stage {
   grid-area: 1 / 1;
   align-self: end;
+  width: 100%;
+  min-width: 0;
   will-change: opacity, filter, transform;
 }
 
@@ -424,20 +426,24 @@ a:hover .arrow--diagonal {
 }
 
 .hero-tagline {
-  font-size: clamp(3.65rem, 16vw, 5.65rem) !important;
+  width: 100%;
+  max-width: 100%;
+  font-size: clamp(3.15rem, 14vw, 5.2rem) !important;
   line-height: 0.82 !important;
 }
 
 .hero-tagline__line {
   display: block;
+  max-width: 100%;
   opacity: 0;
+  white-space: normal;
   transform: translateY(1.5rem);
   animation: riseIn 900ms 180ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .hero-tagline__line:nth-child(2) {
   padding-top: 0.12em;
-  padding-left: 5vw;
+  padding-left: 0;
   animation-delay: 300ms;
 }
 
