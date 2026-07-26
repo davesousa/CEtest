@@ -63,10 +63,24 @@ export default function HomePage() {
 
   useEffect(() => {
     const revealItems = document.querySelectorAll<HTMLElement>("[data-reveal]");
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
+            if (!reduceMotion) {
+              entry.target.animate(
+                [
+                  { opacity: 0, transform: "translateY(2.5rem)" },
+                  { opacity: 1, transform: "translateY(0)" },
+                ],
+                {
+                  duration: 900,
+                  easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+                  fill: "none",
+                },
+              );
+            }
             entry.target.classList.add("is-visible");
             observer.unobserve(entry.target);
           }
