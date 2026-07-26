@@ -425,6 +425,12 @@ a:hover .arrow--diagonal {
   line-height: 0.77;
 }
 
+.hero-stage--secondary h2 {
+  width: 100%;
+  max-width: 100%;
+  font-size: clamp(3rem, 14.8vw, 4.8rem);
+}
+
 .hero-tagline {
   width: 100%;
   max-width: 100%;
@@ -1544,6 +1550,10 @@ footer {
     max-width: 83rem;
     font-size: clamp(8rem, 11.4vw, 12rem);
     line-height: 0.77;
+  }
+
+  .hero .hero-stage--secondary h2 {
+    font-size: clamp(8rem, 11.4vw, 12rem);
   }
 
   .hero .hero-tagline {
