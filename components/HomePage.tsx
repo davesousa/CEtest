@@ -33,6 +33,13 @@ const services = [
   },
 ];
 
+const pressLogos = [
+  { name: "GQ", src: "/press/gq.svg", className: "gq" },
+  { name: "Vogue", src: "/press/vogue.svg", className: "vogue" },
+  { name: "Vanity Fair", src: "/press/vanity-fair.svg", className: "vanity" },
+  { name: "Us Weekly", src: "/press/us-weekly.png", className: "us-weekly" },
+];
+
 const HERO_SCROLL_SCRIPT = String.raw`
 (() => {
   if (window.__ceHeroScrollBound) return;
@@ -559,14 +566,19 @@ export default function HomePage() {
         <p className="eyebrow">Worn on red carpets. Recognized by</p>
         <div className="recognition__track">
           <div>
-            <span>GQ</span>
-            <i>Vogue</i>
-            <span>Vanity Fair</span>
-            <i>US Magazine</i>
-            <span>GQ</span>
-            <i>Vogue</i>
-            <span>Vanity Fair</span>
-            <i>US Magazine</i>
+            {[...pressLogos, ...pressLogos].map((logo, index) => (
+              <span
+                className={`recognition__logo recognition__logo--${logo.className}`}
+                key={`${logo.name}-${index}`}
+                aria-hidden={index >= pressLogos.length ? true : undefined}
+              >
+                <img
+                  src={logo.src}
+                  alt={index < pressLogos.length ? logo.name : ""}
+                  loading="lazy"
+                />
+              </span>
+            ))}
           </div>
         </div>
       </section>
