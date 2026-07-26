@@ -131,6 +131,7 @@ export default function HomePage() {
     let metadataReady = false;
     let videoPrimed = false;
     let primePromise: Promise<void> | null = null;
+    let primeTimer = 0;
 
     const smootherStep = (value: number) =>
       value * value * value * (value * (value * 6 - 15) + 10);
@@ -145,30 +146,33 @@ export default function HomePage() {
       sequence.style.setProperty("--hero-focal-x", `${focalPoint.toFixed(2)}%`);
     };
 
+    const finishPriming = () => {
+      if (videoPrimed) return;
+      if (primeTimer) window.clearTimeout(primeTimer);
+      video.pause();
+      videoPrimed = true;
+      metadataReady = true;
+      sequence.dataset.videoReady = "true";
+      updateTarget();
+    };
+
+    const schedulePrimingHandoff = () => {
+      if (videoPrimed) return;
+      if (primeTimer) window.clearTimeout(primeTimer);
+      primeTimer = window.setTimeout(finishPriming, 120);
+    };
+
     const primeVideo = () => {
       if (videoPrimed || primePromise) return;
 
       primePromise = video
         .play()
-        .then(
-          () =>
-            new Promise<void>((resolve) => {
-              const finishPriming = () => {
-                video.pause();
-                videoPrimed = true;
-                metadataReady = true;
-                sequence.dataset.videoReady = "true";
-                updateTarget();
-                resolve();
-              };
-
-              if ("requestVideoFrameCallback" in video) {
-                video.requestVideoFrameCallback(() => finishPriming());
-              } else {
-                window.setTimeout(finishPriming, 100);
-              }
-            }),
-        )
+        .then(() => {
+          schedulePrimingHandoff();
+          if ("requestVideoFrameCallback" in video) {
+            video.requestVideoFrameCallback(() => finishPriming());
+          }
+        })
         .catch(() => {
           primePromise = null;
           sequence.dataset.videoReady = "false";
@@ -220,6 +224,7 @@ export default function HomePage() {
     };
 
     video.addEventListener("loadedmetadata", onMetadata);
+    video.addEventListener("playing", schedulePrimingHandoff);
     window.addEventListener("pointerdown", primeVideo, { passive: true });
     window.addEventListener("touchstart", primeVideo, { passive: true });
     window.addEventListener("scroll", updateTarget, { passive: true });
@@ -232,7 +237,9 @@ export default function HomePage() {
 
     return () => {
       if (animationFrame) cancelAnimationFrame(animationFrame);
+      if (primeTimer) window.clearTimeout(primeTimer);
       video.removeEventListener("loadedmetadata", onMetadata);
+      video.removeEventListener("playing", schedulePrimingHandoff);
       window.removeEventListener("pointerdown", primeVideo);
       window.removeEventListener("touchstart", primeVideo);
       window.removeEventListener("scroll", updateTarget);
