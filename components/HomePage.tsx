@@ -118,13 +118,19 @@ export default function HomePage() {
     if (!sequence || !video) return;
 
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduceMotion) return;
+    if (reduceMotion) {
+      video.removeAttribute("autoplay");
+      video.pause();
+      return;
+    }
 
     let targetProgress = 0;
     let currentProgress = 0;
     let animationFrame = 0;
     let lastFrame = performance.now();
-    let metadataReady = video.readyState >= HTMLMediaElement.HAVE_METADATA;
+    let metadataReady = false;
+    let videoPrimed = false;
+    let primePromise: Promise<void> | null = null;
 
     const smootherStep = (value: number) =>
       value * value * value * (value * (value * 6 - 15) + 10);
@@ -137,6 +143,36 @@ export default function HomePage() {
       sequence.style.setProperty("--hero-copy-opacity", (1 - copyEase).toFixed(4));
       sequence.style.setProperty("--hero-copy-shift", `${(-copyEase * 3).toFixed(3)}rem`);
       sequence.style.setProperty("--hero-focal-x", `${focalPoint.toFixed(2)}%`);
+    };
+
+    const primeVideo = () => {
+      if (videoPrimed || primePromise) return;
+
+      primePromise = video
+        .play()
+        .then(
+          () =>
+            new Promise<void>((resolve) => {
+              const finishPriming = () => {
+                video.pause();
+                videoPrimed = true;
+                metadataReady = true;
+                sequence.dataset.videoReady = "true";
+                updateTarget();
+                resolve();
+              };
+
+              if ("requestVideoFrameCallback" in video) {
+                video.requestVideoFrameCallback(() => finishPriming());
+              } else {
+                window.setTimeout(finishPriming, 100);
+              }
+            }),
+        )
+        .catch(() => {
+          primePromise = null;
+          sequence.dataset.videoReady = "false";
+        });
     };
 
     const renderFrame = (time: number) => {
@@ -171,6 +207,7 @@ export default function HomePage() {
       const bounds = sequence.getBoundingClientRect();
       const scrollDistance = Math.max(1, bounds.height - window.innerHeight);
       targetProgress = Math.min(1, Math.max(0, -bounds.top / scrollDistance));
+      primeVideo();
 
       if (!animationFrame) {
         lastFrame = performance.now();
@@ -179,20 +216,25 @@ export default function HomePage() {
     };
 
     const onMetadata = () => {
-      metadataReady = true;
-      video.pause();
-      updateTarget();
+      primeVideo();
     };
 
-    video.pause();
     video.addEventListener("loadedmetadata", onMetadata);
+    window.addEventListener("pointerdown", primeVideo, { passive: true });
+    window.addEventListener("touchstart", primeVideo, { passive: true });
     window.addEventListener("scroll", updateTarget, { passive: true });
     window.addEventListener("resize", updateTarget);
+
+    if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
+      primeVideo();
+    }
     updateTarget();
 
     return () => {
       if (animationFrame) cancelAnimationFrame(animationFrame);
       video.removeEventListener("loadedmetadata", onMetadata);
+      window.removeEventListener("pointerdown", primeVideo);
+      window.removeEventListener("touchstart", primeVideo);
       window.removeEventListener("scroll", updateTarget);
       window.removeEventListener("resize", updateTarget);
     };
@@ -277,9 +319,12 @@ export default function HomePage() {
           <video
             ref={heroVideoRef}
             className="hero__video"
+            autoPlay
+            loop
             muted
             playsInline
             preload="auto"
+            disablePictureInPicture
             poster="/ce-hero-poster.webp"
             aria-label="C E Clothier model moving in a bespoke pinstripe suit"
           >
