@@ -200,7 +200,7 @@ export default function HomePage() {
           <p>Toronto · Est. 2014</p>
         </div>
         <div className="hero__content">
-          <p className="eyebrow hero__eyebrow">Individual patterns · A singular point of view</p>
+          <p className="eyebrow hero__eyebrow">Driven by passion, delivered with style.</p>
           <h1 aria-label="Made to be remembered">
             <span className="hero-line">
               <i>Made</i>
@@ -410,7 +410,7 @@ export default function HomePage() {
         <div className="footer__top">
           <div>
             <BrandMark />
-            <p>Driven by passion.<br />Delivered with style.</p>
+            <p>Driven by passion,<br />delivered with style.</p>
           </div>
           <form
             className="newsletter"

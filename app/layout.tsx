@@ -17,7 +17,7 @@ const sans = Manrope({
 export const metadata: Metadata = {
   title: "C|E Clothier — Bespoke Tailoring, Toronto",
   description:
-    "Private bespoke tailoring by C|E Clothier. Individual patterns, exceptional cloth, and a point of view entirely your own.",
+    "Driven by passion, delivered with style. Private bespoke tailoring by C|E Clothier in Toronto.",
 };
 
 export default function RootLayout({
