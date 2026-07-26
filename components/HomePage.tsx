@@ -60,6 +60,8 @@ export default function HomePage() {
   const [newsletterSent, setNewsletterSent] = useState(false);
   const [cursorVisible, setCursorVisible] = useState(false);
   const cursorRef = useRef<HTMLDivElement>(null);
+  const heroSequenceRef = useRef<HTMLDivElement>(null);
+  const heroVideoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     const revealItems = document.querySelectorAll<HTMLElement>("[data-reveal]");
@@ -109,6 +111,92 @@ export default function HomePage() {
     document.body.classList.toggle("locked", menuOpen || bookingOpen);
     return () => document.body.classList.remove("locked");
   }, [menuOpen, bookingOpen]);
+
+  useEffect(() => {
+    const sequence = heroSequenceRef.current;
+    const video = heroVideoRef.current;
+    if (!sequence || !video) return;
+
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduceMotion) return;
+
+    let targetProgress = 0;
+    let currentProgress = 0;
+    let animationFrame = 0;
+    let lastFrame = performance.now();
+    let metadataReady = video.readyState >= HTMLMediaElement.HAVE_METADATA;
+
+    const smootherStep = (value: number) =>
+      value * value * value * (value * (value * 6 - 15) + 10);
+
+    const setVisualProgress = (progress: number) => {
+      const copyExit = Math.min(1, Math.max(0, (progress - 0.42) / 0.32));
+      const copyEase = 1 - Math.pow(1 - copyExit, 3);
+      const focalPoint = 59 - Math.sin(progress * Math.PI) * 17;
+      sequence.style.setProperty("--hero-progress", progress.toFixed(4));
+      sequence.style.setProperty("--hero-copy-opacity", (1 - copyEase).toFixed(4));
+      sequence.style.setProperty("--hero-copy-shift", `${(-copyEase * 3).toFixed(3)}rem`);
+      sequence.style.setProperty("--hero-focal-x", `${focalPoint.toFixed(2)}%`);
+    };
+
+    const renderFrame = (time: number) => {
+      const delta = Math.min(64, time - lastFrame);
+      lastFrame = time;
+      const damping = 1 - Math.exp(-delta * 0.012);
+      currentProgress += (targetProgress - currentProgress) * damping;
+
+      if (Math.abs(targetProgress - currentProgress) < 0.0001) {
+        currentProgress = targetProgress;
+      }
+
+      setVisualProgress(currentProgress);
+
+      if (metadataReady && Number.isFinite(video.duration)) {
+        const easedProgress = smootherStep(currentProgress);
+        const finalFrame = Math.max(0, video.duration - 1 / 24);
+        const targetTime = easedProgress * finalFrame;
+        if (Math.abs(video.currentTime - targetTime) > 1 / 60) {
+          video.currentTime = targetTime;
+        }
+      }
+
+      if (Math.abs(targetProgress - currentProgress) > 0.0001) {
+        animationFrame = requestAnimationFrame(renderFrame);
+      } else {
+        animationFrame = 0;
+      }
+    };
+
+    const updateTarget = () => {
+      const bounds = sequence.getBoundingClientRect();
+      const scrollDistance = Math.max(1, bounds.height - window.innerHeight);
+      targetProgress = Math.min(1, Math.max(0, -bounds.top / scrollDistance));
+
+      if (!animationFrame) {
+        lastFrame = performance.now();
+        animationFrame = requestAnimationFrame(renderFrame);
+      }
+    };
+
+    const onMetadata = () => {
+      metadataReady = true;
+      video.pause();
+      updateTarget();
+    };
+
+    video.pause();
+    video.addEventListener("loadedmetadata", onMetadata);
+    window.addEventListener("scroll", updateTarget, { passive: true });
+    window.addEventListener("resize", updateTarget);
+    updateTarget();
+
+    return () => {
+      if (animationFrame) cancelAnimationFrame(animationFrame);
+      video.removeEventListener("loadedmetadata", onMetadata);
+      window.removeEventListener("scroll", updateTarget);
+      window.removeEventListener("resize", updateTarget);
+    };
+  }, []);
 
   const closeMenu = () => setMenuOpen(false);
   const openBooking = () => {
@@ -184,47 +272,58 @@ export default function HomePage() {
         </div>
       </div>
 
-      <section className="hero" id="top">
-        <Image
-          className="hero__image"
-          src="/ce-hero.jpg"
-          alt="C E Clothier bespoke pinstripe suit"
-          fill
-          sizes="100vw"
-          priority
-        />
-        <div className="hero__shade" />
-        <div className="hero__rail">
-          <p>Private tailoring</p>
-          <span />
-          <p>Toronto · Est. 2014</p>
-        </div>
-        <div className="hero__content">
-          <p className="eyebrow hero__eyebrow">Driven by passion, delivered with style.</p>
-          <h1 aria-label="Made to be remembered">
-            <span className="hero-line">
-              <i>Made</i>
-              <i>to</i>
-              <i>be</i>
-            </span>
-            <span className="hero-line hero-line--indent">
-              <i>remembered.</i>
-            </span>
-          </h1>
-          <div className="hero__bottom">
-            <p>
-              Bespoke garments for men who understand that style is more than what you wear.
-            </p>
-            <button className="round-link" onClick={openBooking} aria-label="Book a private fitting">
-              <Arrow diagonal />
-            </button>
+      <div className="hero-sequence" id="top" ref={heroSequenceRef}>
+        <section className="hero">
+          <video
+            ref={heroVideoRef}
+            className="hero__video"
+            muted
+            playsInline
+            preload="auto"
+            poster="/ce-hero-poster.webp"
+            aria-label="C E Clothier model moving in a bespoke pinstripe suit"
+          >
+            <source src="/ce-hero-scroll.mp4" type="video/mp4" />
+          </video>
+          <div className="hero__shade" />
+          <div className="hero__rail">
+            <p>Private tailoring</p>
+            <span />
+            <p>Toronto · Est. 2014</p>
           </div>
-        </div>
-        <a href="#story" className="scroll-cue" aria-label="Scroll to our story">
-          <span>Scroll to discover</span>
-          <i />
-        </a>
-      </section>
+          <div className="hero__content">
+            <p className="eyebrow hero__eyebrow">Driven by passion, delivered with style.</p>
+            <h1 aria-label="Made to be remembered">
+              <span className="hero-line">
+                <i>Made</i>
+                <i>to</i>
+                <i>be</i>
+              </span>
+              <span className="hero-line hero-line--indent">
+                <i>remembered.</i>
+              </span>
+            </h1>
+            <div className="hero__bottom">
+              <p>
+                Bespoke garments for men who understand that style is more than what you wear.
+              </p>
+              <button
+                className="round-link"
+                onClick={openBooking}
+                aria-label="Book a private fitting"
+              >
+                <Arrow diagonal />
+              </button>
+            </div>
+          </div>
+          <a href="#story" className="scroll-cue" aria-label="Scroll to our story">
+            <span>Scroll to play</span>
+            <i>
+              <b />
+            </i>
+          </a>
+        </section>
+      </div>
 
       <section className="manifesto" id="story">
         <div className="manifesto__meta" data-reveal>
