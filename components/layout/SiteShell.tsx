@@ -13,8 +13,6 @@ function SiteChrome({ children }: { children: ReactNode }) {
   const { openBooking, closeBooking, bookingOpen, sent, submitBooking } = useBooking();
   const [menuOpen, setMenuOpen] = useState(false);
   const [newsletterSent, setNewsletterSent] = useState(false);
-  const [cursorVisible, setCursorVisible] = useState(false);
-  const cursorRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -64,9 +62,6 @@ function SiteChrome({ children }: { children: ReactNode }) {
     revealItems.forEach((item) => observer.observe(item));
 
     const onMove = (event: PointerEvent) => {
-      if (!cursorRef.current) return;
-      cursorRef.current.style.transform = `translate3d(${event.clientX}px, ${event.clientY}px, 0)`;
-      setCursorVisible(true);
       document.documentElement.style.setProperty("--pointer-x", `${event.clientX}px`);
       document.documentElement.style.setProperty("--pointer-y", `${event.clientY}px`);
     };
@@ -83,6 +78,7 @@ function SiteChrome({ children }: { children: ReactNode }) {
     return () => document.body.classList.remove("menu-locked");
   }, [menuOpen]);
 
+  const isHomeTreatment = pathname === "/" || pathname === "/v2";
   const closeMenu = () => setMenuOpen(false);
   const handleOpenBooking = () => {
     closeMenu();
@@ -91,14 +87,8 @@ function SiteChrome({ children }: { children: ReactNode }) {
 
   return (
     <>
-      <div
-        ref={cursorRef}
-        className={`custom-cursor ${cursorVisible ? "is-visible" : ""}`}
-        aria-hidden="true"
-      />
-
       <header
-        className={`site-header ${pathname === "/" ? "site-header--home" : "site-header--page"} ${
+        className={`site-header ${isHomeTreatment ? "site-header--home" : "site-header--page"} ${
           menuOpen ? "is-menu-open" : ""
         }`}
       >
@@ -125,6 +115,17 @@ function SiteChrome({ children }: { children: ReactNode }) {
           Book a fitting
           <Arrow diagonal />
         </button>
+
+        {pathname === "/v2" && (
+          <button
+            type="button"
+            className="header-book--compact"
+            onClick={handleOpenBooking}
+            aria-label="Book a private fitting"
+          >
+            <span>Book</span>
+          </button>
+        )}
 
         <button
           className="menu-toggle"

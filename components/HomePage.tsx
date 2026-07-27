@@ -1,9 +1,9 @@
 "use client";
 
 import Image from "next/image";
+import { useEffect, useRef } from "react";
 import { useBooking } from "@/lib/booking-context";
 import Arrow from "@/components/ui/Arrow";
-
 
 const services = [
   {
@@ -35,18 +35,45 @@ const pressLogos = [
   { name: "Us Weekly", src: "/press/us-weekly.png", className: "us-weekly" },
 ];
 
-const HERO_SCROLL_SCRIPT = String.raw`
-(() => {
-  if (window.__ceHeroScrollBound) return;
-  window.__ceHeroScrollBound = true;
+const FOCAL_TRACK: Array<[number, number]> = [
+  [0, 53],
+  [0.2, 52],
+  [0.4, 51],
+  [0.6, 50],
+  [0.8, 49],
+  [1, 48],
+];
 
-  const init = () => {
-    const sequence = document.querySelector("[data-hero-sequence]");
-    const video = document.getElementById("ce-hero-video");
-    if (!sequence || !video) {
-      window.setTimeout(init, 50);
-      return;
+function trackedFocalPoint(progress: number) {
+  for (let index = 1; index < FOCAL_TRACK.length; index += 1) {
+    const previous = FOCAL_TRACK[index - 1];
+    const next = FOCAL_TRACK[index];
+    if (progress <= next[0]) {
+      const localProgress = (progress - previous[0]) / (next[0] - previous[0]);
+      const easedProgress = localProgress * localProgress * (3 - 2 * localProgress);
+      return previous[1] + (next[1] - previous[1]) * easedProgress;
     }
+  }
+  return FOCAL_TRACK[FOCAL_TRACK.length - 1][1];
+}
+
+function rangeProgress(progress: number, start: number, end: number) {
+  return Math.min(1, Math.max(0, (progress - start) / (end - start)));
+}
+
+function smoothProgress(progress: number) {
+  return progress * progress * (3 - 2 * progress);
+}
+
+export default function HomePage() {
+  const { openBooking } = useBooking();
+  const sequenceRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const sequence = sequenceRef.current;
+    const video = videoRef.current;
+    if (!sequence || !video) return;
 
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       video.pause();
@@ -60,35 +87,9 @@ const HERO_SCROLL_SCRIPT = String.raw`
     let ready = false;
     let priming = false;
     let handoffTimer = 0;
+    let unlockTimer = 0;
 
-    const focalTrack = [
-      [0, 53],
-      [0.2, 52],
-      [0.4, 51],
-      [0.6, 50],
-      [0.8, 49],
-      [1, 48],
-    ];
-
-    const trackedFocalPoint = (progress) => {
-      for (let index = 1; index < focalTrack.length; index += 1) {
-        const previous = focalTrack[index - 1];
-        const next = focalTrack[index];
-        if (progress <= next[0]) {
-          const localProgress = (progress - previous[0]) / (next[0] - previous[0]);
-          const easedProgress = localProgress * localProgress * (3 - 2 * localProgress);
-          return previous[1] + (next[1] - previous[1]) * easedProgress;
-        }
-      }
-      return focalTrack[focalTrack.length - 1][1];
-    };
-
-    const rangeProgress = (progress, start, end) =>
-      Math.min(1, Math.max(0, (progress - start) / (end - start)));
-
-    const smoothProgress = (progress) => progress * progress * (3 - 2 * progress);
-
-    const setVisuals = (progress) => {
+    const setVisuals = (progress: number) => {
       const primaryExit = smoothProgress(rangeProgress(progress, 0.24, 0.43));
       const secondaryLead = smoothProgress(rangeProgress(progress, 0.28, 0.43));
       const secondaryFollow = smoothProgress(rangeProgress(progress, 0.34, 0.49));
@@ -97,15 +98,15 @@ const HERO_SCROLL_SCRIPT = String.raw`
       const focalPoint = trackedFocalPoint(progress);
 
       sequence.style.setProperty("--hero-progress", progress.toFixed(4));
-      sequence.style.setProperty("--hero-focal-x", focalPoint.toFixed(2) + "%");
+      sequence.style.setProperty("--hero-focal-x", `${focalPoint.toFixed(2)}%`);
       sequence.style.setProperty("--hero-primary-opacity", (1 - primaryExit).toFixed(4));
-      sequence.style.setProperty("--hero-primary-y", (-primaryExit * 2.5).toFixed(3) + "rem");
-      sequence.style.setProperty("--hero-primary-blur", (primaryExit * 8).toFixed(2) + "px");
+      sequence.style.setProperty("--hero-primary-y", `${(-primaryExit * 2.5).toFixed(3)}rem`);
+      sequence.style.setProperty("--hero-primary-blur", `${(primaryExit * 8).toFixed(2)}px`);
+      sequence.style.setProperty("--hero-secondary-opacity", (1 - secondaryExit).toFixed(4));
       sequence.style.setProperty(
-        "--hero-secondary-opacity",
-        (1 - secondaryExit).toFixed(4),
+        "--hero-secondary-blur",
+        `${((1 - secondaryLead) * 8 + secondaryExit * 4).toFixed(2)}px`,
       );
-      sequence.style.setProperty("--hero-secondary-blur", ((1 - secondaryLead) * 8 + secondaryExit * 4).toFixed(2) + "px");
       sequence.style.setProperty(
         "--hero-secondary-eyebrow-opacity",
         (secondaryLead * (1 - secondaryExit)).toFixed(4),
@@ -120,16 +121,16 @@ const HERO_SCROLL_SCRIPT = String.raw`
       );
       sequence.style.setProperty(
         "--hero-secondary-one-y",
-        ((1 - secondaryLead) * 3 - secondaryExit * 1.5).toFixed(3) + "rem",
+        `${((1 - secondaryLead) * 3 - secondaryExit * 1.5).toFixed(3)}rem`,
       );
       sequence.style.setProperty(
         "--hero-secondary-two-y",
-        ((1 - secondaryFollow) * 3.75 - secondaryExit * 1.5).toFixed(3) + "rem",
+        `${((1 - secondaryFollow) * 3.75 - secondaryExit * 1.5).toFixed(3)}rem`,
       );
       sequence.style.setProperty("--hero-bottom-opacity", (1 - bottomExit).toFixed(4));
     };
 
-    const render = (time) => {
+    const render = (time: number) => {
       const delta = Math.min(64, time - lastTime);
       lastTime = time;
       current += (target - current) * (1 - Math.exp(-delta * 0.0095));
@@ -193,7 +194,7 @@ const HERO_SCROLL_SCRIPT = String.raw`
         return;
       }
       const playback = video.play();
-      window.setTimeout(() => {
+      unlockTimer = window.setTimeout(() => {
         video.pause();
         update();
       }, 80);
@@ -209,20 +210,26 @@ const HERO_SCROLL_SCRIPT = String.raw`
 
     if (video.readyState >= 1) prime();
     update();
-  };
 
-  requestAnimationFrame(init);
-})();
-`;
-
-export default function HomePage() {
-  const { openBooking } = useBooking();
+    return () => {
+      window.clearTimeout(handoffTimer);
+      window.clearTimeout(unlockTimer);
+      if (frame) cancelAnimationFrame(frame);
+      video.removeEventListener("loadedmetadata", prime);
+      window.removeEventListener("pointerdown", unlockOnTouch);
+      window.removeEventListener("touchstart", unlockOnTouch);
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+      video.pause();
+    };
+  }, []);
 
   return (
     <main>
-      <div className="hero-sequence" id="top" data-hero-sequence>
+      <div ref={sequenceRef} className="hero-sequence" id="top" data-hero-sequence>
         <section className="hero">
           <video
+            ref={videoRef}
             id="ce-hero-video"
             className="hero__video"
             muted
@@ -234,10 +241,6 @@ export default function HomePage() {
           >
             <source src="/ce-hero-scroll-v2.mp4" type="video/mp4" />
           </video>
-          <script
-            suppressHydrationWarning
-            dangerouslySetInnerHTML={{ __html: HERO_SCROLL_SCRIPT }}
-          />
           <div className="hero__shade" />
           <div className="hero__rail">
             <p>Private tailoring</p>
